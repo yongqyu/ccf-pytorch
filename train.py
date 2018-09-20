@@ -33,7 +33,7 @@ if args.model == 'SimpleMF':
     model = SimpleMF(num_users, num_movies, args.emb_dim)
 elif args.model == 'NMF':
     model = NMF(num_users, num_movies, args.emb_dim, args.emb_dim)
-elif args.mode == 'MFC':
+elif args.model == 'MFC':
     model = MFC(num_users, num_movies, args.emb_dim, 16)
 if torch.cuda.is_available():
     model.cuda()
@@ -70,15 +70,16 @@ def train():
             model.eval()
             val_loss = 0
             with torch.no_grad():
-                for s, (u, v, r, timestamp) in enumerate(val_loader):
-                    u = Variable(torch.from_numpy(u))
-                    v = Variable(torch.from_numpy(v))
-                    r = Variable(torch.from_numpy(r))
+                for s, x in enumerate(val_loader):
+                    x = x[0].to(device)
+                    u = Variable(x[:,0])
+                    v = Variable(x[:,1])
+                    r = Variable(x[:,2]).float()
 
                     pred = model(u, v)
                     loss = criterion(r, pred)
                     val_loss += np.sqrt(loss.item())
-            print('[val loss] : '+str(vall_loss/s))
+            print('[val loss] : '+str(val_loss/s))
             if best_loss > (val_loss/s):
                 best_loss = (val_loss/s)
                 best_epoch= epoch
@@ -93,10 +94,11 @@ def test():
     model.eval()
     test_loss = 0
     with torch.no_grad():
-        for s, (u, v, r, timestamp) in enumerate(test_loader):
-            u = Variable(torch.from_numpy(u))
-            v = Variable(torch.from_numpy(v))
-            r = Variable(torch.from_numpy(r))
+        for s, x in enumerate(test_loader):
+            x = x[0].to(device)
+            u = Variable(x[:,0])
+            v = Variable(x[:,1])
+            r = Variable(x[:,2]).float()
 
             pred = model(u, v)
             loss = criterion(r, pred)

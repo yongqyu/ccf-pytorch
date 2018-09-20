@@ -16,34 +16,38 @@ class SimpleMF(nn.Module):
 
 class NMF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, hidden_dim):
-        super(SimpleMF, self).__init__()
+        super(NMF, self).__init__()
 
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
-        self.linear1 = nn.Linear(2*dim, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, 1)
+        self.linear1 = nn.Linear(2*emb_dim, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.linear3 = nn.Linear(hidden_dim, 1)
 
     def forward(self, u, v):
         u = self.u_emb(u)
         v = self.v_emb(v)
-        x = torch.stack((u, v), 1)
+        x = torch.cat((u, v), 1)
 
-        h = nn.ReLU(self.linear1(x))
-        h = self.linear2(h)
+        h = F.relu(self.linear1(x))
+        h = F.relu(self.linear2(h))
+        h = self.linear3(h).squeeze(-1)
         return F.sigmoid(h) * 4 + 1
 
 class MFC(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, hidden_dim):
-        super(SimpleMF, self).__init__()
+        super(MFC, self).__init__()
 
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
         self.conv = nn.Conv1d(2, hidden_dim, 3)
-        self.linser = nn.Linear()
+        self.linear = nn.Linear(hidden_dim, hidden_dim)
 
     def forward(self, u, v):
         u = self.u_emb(u)
         v = self.v_emb(v)
-        x = torch.stack((u, v), 1)
-        print(x.size())
+        x = torch.cat((u, v), 1)
+
+        h = F.max_pool1d(self.conv(x))
+        print(h.size())
         return F.sigmoid(x) * 4 + 1
