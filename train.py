@@ -1,4 +1,5 @@
 # Importing the libraries
+import os
 import numpy as np
 import pandas as pd
 import torch
@@ -37,6 +38,12 @@ elif args.model == 'MFC':
     model = MFC(num_users, num_movies, args.emb_dim, 16)
 if torch.cuda.is_available():
     model.cuda()
+"""Print out the network information."""
+num_params = 0
+for p in model.parameters():
+    num_params += p.numel()
+print(model)
+print("The number of parameters: {}".format(num_params))
 
 criterion = nn.MSELoss()
 optimizer = optim.RMSprop(model.parameters(), lr = 0.01, weight_decay = 0.5)
@@ -46,6 +53,8 @@ best_loss  = 9999.
 
 
 def train():
+    global best_loss, best_epoch
+
     # Training
     for epoch in range(args.num_epochs):
         train_loss = 0
@@ -83,13 +92,13 @@ def train():
             if best_loss > (val_loss/s):
                 best_loss = (val_loss/s)
                 best_epoch= epoch
-            torch.save(model,
-                       os.path.joint(args.model_path+args.model,
+                torch.save(model,
+                       os.path.join(args.model_path+args.model,
                        'model-%d.pkl'%(epoch+1)))
 
 def test():
     # Test
-    model.load_state_dict(torch.load(os.path.joint(args.model_path+args.model,
+    model.load_state_dict(torch.load(os.path.join(args.model_path+args.model,
                           'model-%d.pkl'%(best_epoch+1))))
     model.eval()
     test_loss = 0

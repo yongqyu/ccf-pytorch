@@ -40,14 +40,16 @@ class MFC(nn.Module):
 
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
-        self.conv = nn.Conv1d(2, hidden_dim, 3)
-        self.linear = nn.Linear(hidden_dim, hidden_dim)
+        self.conv1 = nn.Conv1d(2, hidden_dim, 3)
+        self.conv2 = nn.Conv1d(hidden_dim, 1, 3)
+        self.linear = nn.Linear(6, 1)
 
     def forward(self, u, v):
         u = self.u_emb(u)
         v = self.v_emb(v)
-        x = torch.cat((u, v), 1)
+        x = torch.stack((u, v), 1)
 
-        h = F.max_pool1d(self.conv(x))
-        print(h.size())
-        return F.sigmoid(x) * 4 + 1
+        h = F.max_pool1d(self.conv1(x), kernel_size=2)
+        h = F.max_pool1d(self.conv2(h), kernel_size=2)
+        h = self.linear(h.view(h.size(0), -1)).squeeze(-1)
+        return F.sigmoid(h) * 4 + 1
