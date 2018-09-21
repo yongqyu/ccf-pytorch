@@ -26,16 +26,16 @@ val_loader   = DataLoader(TensorDataset(torch.tensor(val.values)), args.batch_si
 test_loader  = DataLoader(TensorDataset(torch.tensor(test.values)), args.batch_size, args.data_shuffle)
 
 # Getting the number of users and movies
-num_users = int(max(max(train.values[:,0]), max(val.values[:,0]), max(test.values[:,0]))) + 1
-num_movies = int(max(max(train.values[:,1]), max(val.values[:,1]), max(test.values[:,1])))+ 1
+num_users  = int(max(max(train.values[:,0]), max(val.values[:,0]), max(test.values[:,0]))) + 1
+num_movies = int(max(max(train.values[:,1]), max(val.values[:,1]), max(test.values[:,1]))) + 1
 
 # Creating the architecture of the Neural Network
 if args.model == 'SimpleMF':
     model = SimpleMF(num_users, num_movies, args.emb_dim)
 elif args.model == 'NMF':
-    model = NMF(num_users, num_movies, args.emb_dim, args.emb_dim)
+    model = NMF(num_users, num_movies, args.emb_dim, args.layers)
 elif args.model == 'MFC':
-    model = MFC(num_users, num_movies, args.emb_dim, 16)
+    model = MFC(num_users, num_movies, args.emb_dim, args.layers)
 if torch.cuda.is_available():
     model.cuda()
 """Print out the network information."""
@@ -46,7 +46,7 @@ print(model)
 print("The number of parameters: {}".format(num_params))
 
 criterion = nn.MSELoss()
-optimizer = optim.RMSprop(model.parameters(), lr = 0.01, weight_decay = 0.5)
+optimizer = optim.Adam(model.parameters(), lr = 0.001, weight_decay = 0.5)
 
 best_epoch = 0
 best_loss  = 9999.
@@ -72,7 +72,7 @@ def train():
             model.zero_grad()
             loss.backward()
             optimizer.step()
-        print('epoch: '+str(epoch)+' loss: '+str(train_loss/s))
+        print('epoch: '+str(epoch+1)+' loss: '+str(train_loss/s))
 
         if (epoch+1) % args.val_step == 0:
             # Validation
@@ -91,7 +91,7 @@ def train():
             print('[val loss] : '+str(val_loss/s))
             if best_loss > (val_loss/s):
                 best_loss = (val_loss/s)
-                best_epoch= epoch
+                best_epoch= epoch+1
                 torch.save(model,
                        os.path.join(args.model_path+args.model,
                        'model-%d.pkl'%(epoch+1)))
@@ -99,7 +99,7 @@ def train():
 def test():
     # Test
     model.load_state_dict(torch.load(os.path.join(args.model_path+args.model,
-                          'model-%d.pkl'%(best_epoch+1))))
+                          'model-%d.pkl'%(best_epoch))).state_dict())
     model.eval()
     test_loss = 0
     with torch.no_grad():
