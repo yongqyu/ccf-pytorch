@@ -6,28 +6,23 @@ import torch
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
 from torch.autograd import Variable
 
 from model import *
 from config import get_args
+from data_loader import get_loader
 args = get_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # UserID::MovieID::Rating::Timestamp (5-star scale)
-# Importing the dataset
-train = pd.read_pickle('./data/train.pkl')
-val   = pd.read_pickle('./data/val.pkl')
-test  = pd.read_pickle('./data/test.pkl')
-
-train_loader = DataLoader(TensorDataset(torch.tensor(train.values)), args.batch_size, args.data_shuffle)
-val_loader   = DataLoader(TensorDataset(torch.tensor(val.values)), args.batch_size, args.data_shuffle)
-test_loader  = DataLoader(TensorDataset(torch.tensor(test.values)), args.batch_size, args.data_shuffle)
+train_loader = get_loader(args.train_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
+val_loader = get_loader(args.val_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
+test_loader = get_loader(args.test_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
 
 # Getting the number of users and movies
-num_users  = int(max(max(train.values[:,0]), max(val.values[:,0]), max(test.values[:,0]))) + 1
-num_movies = int(max(max(train.values[:,1]), max(val.values[:,1]), max(test.values[:,1]))) + 1
+num_users  = args.user_cnt
+num_movies = args.item_cnt
 
 # Creating the architecture of the Neural Network
 if args.model == 'SimpleMF':
@@ -35,7 +30,7 @@ if args.model == 'SimpleMF':
 elif args.model == 'NMF':
     model = NMF(num_users, num_movies, args.emb_dim, args.layers)
 elif args.model == 'MFC':
-    model = MFC(num_users, num_movies, args.emb_dim, args.layers)
+    model = MFC(num_users, num_movies, args.emb_dim, args.conv_layers)
 if torch.cuda.is_available():
     model.cuda()
 """Print out the network information."""
@@ -45,7 +40,8 @@ for p in model.parameters():
 print(model)
 print("The number of parameters: {}".format(num_params))
 
-criterion = nn.MSELoss()
+#criterion = nn.MSELoss()
+criterion = nn.BCELoss()#CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr = 0.001, weight_decay = 0.5)
 
 best_epoch = 0
@@ -59,15 +55,17 @@ def train():
     for epoch in range(args.num_epochs):
         train_loss = 0
         model.train()
-        for s, x in enumerate(train_loader):
-            x = x[0].to(device)
+        for s, (x, n) in enumerate(train_loader):
+            x = x.to(device)
+            n = n.to(device)
             u = Variable(x[:,0])
             v = Variable(x[:,1])
-            r = Variable(x[:,2]).float()
+            #r = Variable(x[:,2]).float()
 
-            pred = model(u, v)
-            loss = criterion(pred, r)
-            train_loss += np.sqrt(loss.item())
+            pred, neg_pred = model(u, v, n)
+            loss = criterion(pred, torch.ones(pred.size(0)).to(device)) \
+                 + criterion(neg_pred, torch.zeros(neg_pred.size(0)).to(device))
+            train_loss += loss.item()
 
             model.zero_grad()
             loss.backward()
@@ -78,17 +76,26 @@ def train():
             # Validation
             model.eval()
             val_loss = 0
+            val_hits = 0
             with torch.no_grad():
-                for s, x in enumerate(val_loader):
-                    x = x[0].to(device)
+                for s, (x, n) in enumerate(val_loader):
+                    x = x.to(device)
+                    n = n.to(device)
                     u = Variable(x[:,0])
                     v = Variable(x[:,1])
-                    r = Variable(x[:,2]).float()
+                    #r = Variable(x[:,2]).float()
 
-                    pred = model(u, v)
-                    loss = criterion(r, pred)
-                    val_loss += np.sqrt(loss.item())
-            print('[val loss] : '+str(val_loss/s))
+                    pred, neg_pred = model(u, v, n)
+                    loss = criterion(pred, torch.ones(pred.size(0)).to(device)) \
+                         + criterion(neg_pred, torch.zeros(neg_pred.size(0)).to(device))
+                    val_loss += loss.item()
+
+                    # Hit Ratio
+                    pred = torch.cat((pred.unsqueeze(1), neg_pred.view(-1, args.neg_cnt)), 1)
+                    _, topk = torch.sort(pred, 1, descending=True)
+                    val_hits += sum([0 in topk[k, :args.at_k] for k in range(topk.size(0))])
+
+            print('[val loss] : '+str(val_loss/s)+' [val hit ratio] : '+str(val_hits/num_users))
             if best_loss > (val_loss/s):
                 best_loss = (val_loss/s)
                 best_epoch= epoch+1
@@ -102,23 +109,31 @@ def test():
                           'model-%d.pkl'%(best_epoch))).state_dict())
     model.eval()
     test_loss = 0
+    test_hits = 0
     with torch.no_grad():
-        for s, x in enumerate(test_loader):
-            x = x[0].to(device)
+        for s, (x, n) in enumerate(test_loader):
+            x = x.to(device)
+            n = n.to(device)
             u = Variable(x[:,0])
             v = Variable(x[:,1])
-            r = Variable(x[:,2]).float()
+            #r = Variable(x[:,2]).float()
 
-            pred = model(u, v)
-            loss = criterion(r, pred)
-            test_loss += np.sqrt(loss.item())
+            pred, neg_pred = model(u, v, n)
+            loss = criterion(pred, torch.ones(pred.size(0)).to(device)) \
+                 + criterion(neg_pred, torch.zeros(neg_pred.size(0)).to(device))
+            test_loss += loss.item()
 
-    print('[test loss] : '+str(test_loss/s))
+            # Hit Ratio
+            pred = torch.cat((pred.unsqueeze(1), neg_pred.view(-1, args.neg_cnt)), 1)
+            _, topk = torch.sort(pred, 1, descending=True)
+            test_hits += sum([0 in topk[k, :args.at_k] for k in range(topk.size(0))])
+
+    print('[test loss] : '+str(test_loss/s)+' [test hit ratio] : '+str(test_hits/num_users))
 
 
 if __name__ == '__main__':
     if args.mode == 'train':
         train()
-    if args.mode == 'test':
+    elif args.mode == 'test':
         best_epoch = args.test_epoch
     test()
