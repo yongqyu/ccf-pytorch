@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
-class SimpleMF(nn.Module):
+class SimpleCF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim):
-        super(SimpleMF, self).__init__()
+        super(SimpleCF, self).__init__()
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
 
@@ -14,9 +14,9 @@ class SimpleMF(nn.Module):
         v = self.v_emb(v)
         return F.sigmoid(torch.sum(torch.mul(u, v), 1)) * 4 + 1
 
-class NMF(nn.Module):
+class NCF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, layers):
-        super(NMF, self).__init__()
+        super(NCF, self).__init__()
 
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
@@ -40,9 +40,9 @@ class NMF(nn.Module):
         n_h=self.linear(n_x).squeeze(-1)
         return h, n_h
 
-class MFC(nn.Module):
+class CCF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, layers):
-        super(MFC, self).__init__()
+        super(CCF, self).__init__()
 
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)

@@ -25,12 +25,12 @@ num_users  = args.user_cnt
 num_movies = args.item_cnt
 
 # Creating the architecture of the Neural Network
-if args.model == 'SimpleMF':
-    model = SimpleMF(num_users, num_movies, args.emb_dim)
-elif args.model == 'NMF':
-    model = NMF(num_users, num_movies, args.emb_dim, args.layers)
-elif args.model == 'MFC':
-    model = MFC(num_users, num_movies, args.emb_dim, args.conv_layers)
+if args.model == 'SimpleCF':
+    model = SimpleCF(num_users, num_movies, args.emb_dim)
+elif args.model == 'NCF':
+    model = NCF(num_users, num_movies, args.emb_dim, args.layers)
+elif args.model == 'CCF':
+    model = CCF(num_users, num_movies, args.emb_dim, args.conv_layers)
 if torch.cuda.is_available():
     model.cuda()
 """Print out the network information."""
