@@ -41,8 +41,8 @@ print(model)
 print("The number of parameters: {}".format(num_params))
 
 #criterion = nn.MSELoss()
-criterion = nn.BCELoss()#CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr = 0.001, weight_decay = 0.5)
+criterion = nn.BCEWithLogitsLoss()#CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr = args.lr, weight_decay = args.weight_decay)
 
 best_epoch = 0
 best_loss  = 9999.

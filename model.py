@@ -24,8 +24,9 @@ class NMF(nn.Module):
         for (in_d, out_d) in zip(layers[:-1], layers[1:]):
             linears.append(nn.Linear(in_d, out_d))
             linears.append(nn.ReLU())
+            linears.append(nn.Dropout(p=0.2))
+        linears.append(nn.Linear(layers[-1], 1))
         self.linear = nn.Sequential(*linears)
-        self.out_lin = nn.Linear(layers[-1], 1)
 
     def forward(self, u, v, n):
         u = self.u_emb(u)
@@ -35,11 +36,9 @@ class NMF(nn.Module):
         n_x=torch.cat((u.unsqueeze(1).expand_as(n), n), 2)
         n_x=n_x.view(-1,n_x.size(-1))
 
-        h = self.linear(x)
-        h = self.out_lin(h).squeeze(-1)
-        n_h=self.linear(n_x)
-        n_h=self.out_lin(n_h).squeeze(-1)
-        return F.sigmoid(h), F.sigmoid(n_h)
+        h = self.linear(x).squeeze(-1)
+        n_h=self.linear(n_x).squeeze(-1)
+        return h, n_h
 
 class MFC(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, layers):
@@ -57,10 +56,13 @@ class MFC(nn.Module):
     def forward(self, u, v, n):
         u = self.u_emb(u)
         v = self.v_emb(v)
-        n = self.v_emb(n.view(-1))
+        n = self.v_emb(n)
         x = torch.stack((u, v), 1)
-        n = torch.stack((u, n), 1)
+        n_x=torch.stack((u.repeat(1,n.size(1)).view(-1,n.size(-1)),
+                         n.view(-1,n.size(-1))), 1)
 
         h = self.conv(x)
         h = self.linear(h.view(h.size(0), -1)).squeeze(-1)
-        return h
+        n_h = self.conv(n_x)
+        n_h = self.linear(n_h.view(n_h.size(0), -1)).squeeze(-1)
+        return h, n_h

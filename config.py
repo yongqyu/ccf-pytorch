@@ -15,13 +15,15 @@ def get_args():
     parser.add_argument('--test-epoch', type=int, default=50)
     parser.add_argument('--neg-cnt', type=int, default=100)
     parser.add_argument('--at-k', type=int, default=10)
+    parser.add_argument('--lr', type=float, default=0.00001)
+    parser.add_argument('--weight_decay', type=float, default=0.0)
 
     parser.add_argument('--model', type=str, default='SimpleMF',
                                    help='SimpleMF / NMF / MFC')
 
     parser.add_argument('--emb-dim', type=int, default=16)
-    parser.add_argument('--layers', default=[32,64,32,8])
-    parser.add_argument('--conv-layers', default=[2,64,32,8])
+    parser.add_argument('--layers', default=[32,32,16,8])
+    parser.add_argument('--conv-layers', default=[2,32,16,8])
     parser.add_argument('--user-cnt', type=int, default=6041)
     parser.add_argument('--item-cnt', type=int, default=3954)
 
