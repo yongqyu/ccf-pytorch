@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument('--weight_decay', type=float, default=0.0)
 
     parser.add_argument('--model', type=str, default='SimpleMF',
-                                   help='SimpleCF / NCF / CCF')
+                                   help='GMF / NCF / CCF')
 
     parser.add_argument('--emb-dim', type=int, default=16)
     parser.add_argument('--layers', default=[32,32,16,8])

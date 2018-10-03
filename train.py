@@ -25,8 +25,8 @@ num_users  = args.user_cnt
 num_movies = args.item_cnt
 
 # Creating the architecture of the Neural Network
-if args.model == 'SimpleCF':
-    model = SimpleCF(num_users, num_movies, args.emb_dim)
+if args.model == 'GMF':
+    model = GMF(num_users, num_movies, args.emb_dim)
 elif args.model == 'NCF':
     model = NCF(num_users, num_movies, args.emb_dim, args.layers)
 elif args.model == 'CCF':

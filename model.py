@@ -3,21 +3,22 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
-class SimpleCF(nn.Module):
+class GMF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim):
-        super(SimpleCF, self).__init__()
+        super(GMF, self).__init__()
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
 
     def forward(self, u, v):
         u = self.u_emb(u)
         v = self.v_emb(v)
-        return F.sigmoid(torch.sum(torch.mul(u, v), 1)) * 4 + 1
+        return torch.mul(u, v)
 
 class NCF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, layers):
         super(NCF, self).__init__()
 
+        self.gmf = GMF(num_user, num_item, emb_dim)
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
         linears = []
@@ -25,25 +26,36 @@ class NCF(nn.Module):
             linears.append(nn.Linear(in_d, out_d))
             linears.append(nn.ReLU())
             linears.append(nn.Dropout(p=0.2))
-        linears.append(nn.Linear(layers[-1], 1))
         self.linear = nn.Sequential(*linears)
+        self.predict= nn.Linear(emb_dim+layers[-1], 1)
 
     def forward(self, u, v, n):
+        # GMF
+        gmf = self.gmf(u,v)
+        gmf_n=self.gmf(u.unsqueeze(1).expand_as(n),n).view(-1,gmf.size(-1))
+
+        # MLP
         u = self.u_emb(u)
         v = self.v_emb(v)
         n = self.v_emb(n)
         x = torch.cat((u, v), 1)
-        n_x=torch.cat((u.unsqueeze(1).expand_as(n), n), 2)
-        n_x=n_x.view(-1,n_x.size(-1))
+        x_n=torch.cat((u.unsqueeze(1).expand_as(n), n), 2)
+        x_n=x_n.view(-1,x_n.size(-1))
 
-        h = self.linear(x).squeeze(-1)
-        n_h=self.linear(n_x).squeeze(-1)
-        return h, n_h
+        h = self.linear(x)
+        h_n=self.linear(x_n)
+
+        # Fusion
+        pred = self.predict(torch.cat((gmf,h), 1)).view(-1)
+        pred_n=self.predict(torch.cat((gmf_n,h_n), 1)).view(-1)
+
+        return pred, pred_n
 
 class CCF(nn.Module):
     def __init__(self, num_user, num_item, emb_dim, layers):
         super(CCF, self).__init__()
 
+        self.gmf = GMF(num_user, num_item, emb_dim)
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
         convs = []
@@ -51,18 +63,26 @@ class CCF(nn.Module):
             convs.append(nn.Conv1d(in_d, out_d, 2))
             convs.append(nn.MaxPool1d(2))
         self.conv = nn.Sequential(*convs)
-        self.linear = nn.Linear(layers[-1], 1)
+        self.pred = nn.Linear(emb_dim+layers[-1], 1)
 
     def forward(self, u, v, n):
+        # GMF
+        gmf = self.gmf(u,v)
+        gmf_n=self.gmf(u.unsqueeze(1).expand_as(n),n).view(-1,gmf.size(-1))
+
+        # CNN
         u = self.u_emb(u)
         v = self.v_emb(v)
         n = self.v_emb(n)
         x = torch.stack((u, v), 1)
-        n_x=torch.stack((u.repeat(1,n.size(1)).view(-1,n.size(-1)),
+        x_n=torch.stack((u.repeat(1,n.size(1)).view(-1,n.size(-1)),
                          n.view(-1,n.size(-1))), 1)
 
-        h = self.conv(x)
-        h = self.linear(h.view(h.size(0), -1)).squeeze(-1)
-        n_h = self.conv(n_x)
-        n_h = self.linear(n_h.view(n_h.size(0), -1)).squeeze(-1)
-        return h, n_h
+        h = self.conv(x).view(x.size(0), -1)
+        h_n=self.conv(x_n).view(x_n.size(0), -1)
+
+        # Fusion
+        pred = self.pred(torch.cat((gmf,h), 1)).view(-1)
+        pred_n=self.pred(torch.cat((gmf_n,h_n), 1)).view(-1)
+
+        return pred, pred_n
