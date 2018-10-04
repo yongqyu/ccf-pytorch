@@ -50,9 +50,12 @@ best_loss  = 9999.
 
 def train():
     global best_loss, best_epoch
+    if args.start_epoch:
+        model.load_state_dict(torch.load(os.path.join(args.model_path+args.model,
+                              'model-%d.pkl'%(args.start_epoch))).state_dict())
 
     # Training
-    for epoch in range(args.num_epochs):
+    for epoch in range(args.start_epoch, args.num_epochs):
         train_loss = 0
         model.train()
         for s, (x, n) in enumerate(train_loader):

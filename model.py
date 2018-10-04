@@ -58,12 +58,13 @@ class CCF(nn.Module):
         self.gmf = GMF(num_user, num_item, emb_dim)
         self.u_emb = nn.Embedding(num_user, emb_dim)
         self.v_emb = nn.Embedding(num_item, emb_dim)
-        convs = []
-        for (in_d, out_d) in zip(layers[:-1], layers[1:]):
-            convs.append(nn.Conv1d(in_d, out_d, 2))
-            convs.append(nn.MaxPool1d(2))
+        convs = [nn.Conv1d(layers[0], layers[1], 3)]
+        for i, (in_d, out_d) in enumerate(zip(layers[1:-1], layers[2:])):
+            convs.append(nn.BatchNorm1d(in_d))
+            convs.append(nn.ReLU())
+            convs.append(nn.Conv1d(in_d, out_d, 3, stride=2-i))
         self.conv = nn.Sequential(*convs)
-        self.pred = nn.Linear(emb_dim+layers[-1], 1)
+        self.pred = nn.Linear(emb_dim+4*layers[-1], 1)
 
     def forward(self, u, v, n):
         # GMF

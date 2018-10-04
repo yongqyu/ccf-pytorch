@@ -10,12 +10,13 @@ def get_args():
     parser.add_argument('--data-path', type=str, default="./data")
     parser.add_argument('--data-shuffle', type=bool, default=True)
     parser.add_argument('--batch-size', type=int, default=256)
-    parser.add_argument('--num-epochs', type=int, default=100)
+    parser.add_argument('--num-epochs', type=int, default=200)
     parser.add_argument('--val-step', type=int, default=5)
     parser.add_argument('--test-epoch', type=int, default=50)
+    parser.add_argument('--start-epoch', type=int, default=0)
     parser.add_argument('--neg-cnt', type=int, default=100)
     parser.add_argument('--at-k', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=0.00001)
+    parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--weight_decay', type=float, default=0.0)
 
     parser.add_argument('--model', type=str, default='SimpleMF',
