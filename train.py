@@ -29,6 +29,8 @@ if args.model == 'GMF':
     model = GMF(num_users, num_movies, args.emb_dim)
 elif args.model == 'NCF':
     model = NCF(num_users, num_movies, args.emb_dim, args.layers)
+elif args.model == 'ONCF':
+    model = ONCF(num_users, num_movies, args.emb_dim, args.outer_layers)
 elif args.model == 'CCF':
     model = CCF(num_users, num_movies, args.emb_dim, args.conv_layers)
 if torch.cuda.is_available():

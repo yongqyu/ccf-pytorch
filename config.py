@@ -24,6 +24,7 @@ def get_args():
 
     parser.add_argument('--emb-dim', type=int, default=16)
     parser.add_argument('--layers', default=[32,32,16,8])
+    parser.add_argument('--outer-layers', default=[1,32,32,32,32])
     parser.add_argument('--conv-layers', default=[2,32,16,8])
     parser.add_argument('--user-cnt', type=int, default=6041)
     parser.add_argument('--item-cnt', type=int, default=3954)
