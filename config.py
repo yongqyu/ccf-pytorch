@@ -17,10 +17,10 @@ def get_args():
     parser.add_argument('--neg-cnt', type=int, default=100)
     parser.add_argument('--at-k', type=int, default=10)
     parser.add_argument('--lr', type=float, default=0.0001)
-    parser.add_argument('--weight_decay', type=float, default=0.0)
+    parser.add_argument('--weight_decay', type=float, default=0.5)
 
-    parser.add_argument('--model', type=str, default='SimpleMF',
-                                   help='GMF / NCF / CCF')
+    parser.add_argument('--model', type=str, default='CCF',
+                                   help='NCF / ONCF / CCF')
 
     parser.add_argument('--emb-dim', type=int, default=16)
     parser.add_argument('--layers', default=[32,32,16,8])
