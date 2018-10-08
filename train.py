@@ -16,9 +16,9 @@ args = get_args()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # UserID::MovieID::Rating::Timestamp (5-star scale)
-train_loader = get_loader(args.train_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
-val_loader = get_loader(args.val_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
-test_loader = get_loader(args.test_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
+train_loader = get_loader(args.data_path, args.train_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
+val_loader = get_loader(args.data_path, args.val_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
+test_loader = get_loader(args.data_path, args.test_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
 
 # Getting the number of users and movies
 num_users  = args.user_cnt
@@ -61,8 +61,8 @@ def train():
         train_loss = 0
         model.train()
         for s, (x, n) in enumerate(train_loader):
-            x = x.to(device)
-            n = n.to(device)
+            x = x.long().to(device)
+            n = n.long().to(device)
             u = Variable(x[:,0])
             v = Variable(x[:,1])
             #r = Variable(x[:,2]).float()

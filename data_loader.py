@@ -31,10 +31,10 @@ class DataFolder(data.Dataset):
 		return self.data.size(0)
 
 
-def get_loader(data_path, neg_path, neg_cnt, batch_size, shuffle=True, num_workers=2):
+def get_loader(root, data_path, neg_path, neg_cnt, batch_size, shuffle=True, num_workers=2):
 	"""Builds and returns Dataloader."""
 
-	dataset = DataFolder(data_path, neg_path, neg_cnt)
+	dataset = DataFolder(root+data_path, root+neg_path, neg_cnt)
 
 	data_loader = data.DataLoader(dataset=dataset,
 								  batch_size=batch_size,
