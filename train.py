@@ -21,8 +21,12 @@ val_loader = get_loader(args.data_path, args.val_path, args.neg_path, args.neg_c
 test_loader = get_loader(args.data_path, args.test_path, args.neg_path, args.neg_cnt, args.batch_size, args.data_shuffle)
 
 # Getting the number of users and movies
-num_users  = args.user_cnt
-num_movies = args.item_cnt
+if 'ml' in args.data_path:
+    num_users  = 6041
+    num_movies = 3954
+elif 'yelp' in args.data_path:
+    num_users  = 25678
+    num_movies = 25816
 
 # Creating the architecture of the Neural Network
 if args.model == 'GMF':
@@ -33,6 +37,8 @@ elif args.model == 'ONCF':
     model = ONCF(num_users, num_movies, args.emb_dim, args.outer_layers)
 elif args.model == 'CCF':
     model = CCF(num_users, num_movies, args.emb_dim, args.conv_layers)
+elif args.model == 'ATCF':
+    model = ATCF(num_users, num_movies, args.emb_dim)
 if torch.cuda.is_available():
     model.cuda()
 """Print out the network information."""
@@ -84,8 +90,8 @@ def train():
             val_hits = 0
             with torch.no_grad():
                 for s, (x, n) in enumerate(val_loader):
-                    x = x.to(device)
-                    n = n.to(device)
+                    x = x.long().to(device)
+                    n = n.long().to(device)
                     u = Variable(x[:,0])
                     v = Variable(x[:,1])
                     #r = Variable(x[:,2]).float()
@@ -117,8 +123,8 @@ def test():
     test_hits = 0
     with torch.no_grad():
         for s, (x, n) in enumerate(test_loader):
-            x = x.to(device)
-            n = n.to(device)
+            x = x.long().to(device)
+            n = n.long().to(device)
             u = Variable(x[:,0])
             v = Variable(x[:,1])
             #r = Variable(x[:,2]).float()

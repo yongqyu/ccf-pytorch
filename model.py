@@ -96,16 +96,16 @@ class CCF(nn.Module):
         self.v_emb = nn.Embedding(num_item, emb_dim)
         convs = []
         for (in_d, out_d) in zip(layers[:-1], layers[1:]):
-            convs.append(nn.Conv1d(in_d, out_d, 2))
-            convs.append(nn.ReLU())
-            convs.append(nn.AvgPool1d(2))
+            convs.append(nn.Conv1d(in_d, out_d, 4))
+            #convs.append(nn.ReLU())
+            convs.append(nn.AvgPool1d(3, stride=1))
         '''
-        convs = []
+        convs = [nn.Conv1d(in_d, out_d, 2, 2)]
         for i, (in_d, out_d) in enumerate(zip(layers[:-1], layers[1:])):
-            convs.append(nn.Conv1d(in_d, out_d, 2, 2))
             #convs.append(nn.BatchNorm1d(in_d))
             convs.append(nn.ReLU())
             #convs.append(nn.Dropout(p=0.5))
+            convs.append(nn.Conv1d(in_d, out_d, 2, 2))
         '''
         self.conv = nn.Sequential(*convs)
         self.pred = nn.Linear(emb_dim+layers[-1], 1)
@@ -129,5 +129,46 @@ class CCF(nn.Module):
         # Fusion
         pred = self.pred(torch.cat((gmf,h), 1)).view(-1)
         pred_n=self.pred(torch.cat((gmf_n,h_n), 1)).view(-1)
+
+        return pred, pred_n
+
+class ATCF(nn.Module):
+    def __init__(self, num_user, num_item, emb_dim):
+        super(ATCF, self).__init__()
+
+        #self.gmf = GMF(num_user, num_item, emb_dim)
+        self.u_emb = nn.Embedding(num_user, emb_dim)
+        self.q_emb = nn.Embedding(num_user, emb_dim)
+        self.v_emb = nn.Embedding(num_item, emb_dim)
+        self.t_emb = nn.Embedding(num_item, emb_dim)
+
+        self.a_lin = nn.Linear(emb_dim, emb_dim)
+
+    def forward(self, u, v, n):
+        # GMF
+        #gmf = self.gmf(u,v)
+        #gmf_n=self.gmf(u.unsqueeze(1).expand_as(n),n).view(-1,gmf.size(-1))
+
+        # CNN
+        q = self.q_emb(u)
+        u = self.u_emb(u)
+        t = self.t_emb(v)
+        v = self.v_emb(v)
+        t_n=self.t_emb(n)
+        v_n=self.v_emb(n)
+
+        h = torch.mul(u, v)
+        h_n=torch.mul(u.unsqueeze(1).expand_as(v_n), v_n)
+
+        # attention
+        a = torch.mul(q, self.a_lin(h))
+        s = torch.mul(a,h)
+        a_n=torch.mul(q.unsqueeze(1).expand_as(h_n), self.a_lin(h_n))
+        s_n=torch.mul(a_n,h_n)
+
+        t = F.sigmoid(t)
+        pred = torch.sum(torch.mul(s,t), 1)
+        t_n=F.sigmoid(t_n)
+        pred_n=torch.sum(torch.mul(s_n.view(-1,s_n.size(-1)),t_n.view(-1,t_n.size(-1))), 1)
 
         return pred, pred_n

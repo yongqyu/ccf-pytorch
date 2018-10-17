@@ -21,7 +21,7 @@ class DataFolder(data.Dataset):
 		"""Reads an Data and Neg Sample from a file and returns."""
 		src = self.data[index]
 		usr = int(src[0])-1
-		#neg = random.sample(list(self.neg_list[usr]), self.neg_cnt)
+		neg = random.sample(list(self.neg_list[usr]), self.neg_cnt)
 		neg = self.neg_list[usr]
 
 		return src, neg
